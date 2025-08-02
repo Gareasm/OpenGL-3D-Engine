@@ -1,0 +1,16 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/Graphics/FileContentIndex
+/.vs/Graphics/v17
+/.vs/CMakeWorkspaceSettings.json
+/.vs/ProjectSettings.json
+/.vs/tasks.vs.json
+/.vs
+/Graphics/x64/Debug/Graphics.tlog
+/Graphics/x64/Debug/EBO.obj
+/Graphics/x64/Debug
+/Libraries
+/x64/Debug/Graphics.exe
+/x64/Debug/Graphics.pdb
