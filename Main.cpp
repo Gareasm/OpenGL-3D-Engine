@@ -25,6 +25,39 @@
 bool GUI = true;
 float const height = 1200;
 float const width = 1200;
+struct Planet {
+	glm::vec3 color;
+	float radius;
+	float orbitRadius;
+	float orbitSpeed;
+	float rotationSpeed;
+	float currentOrbitAngle;
+	float currentRotationAngle;
+	std::string name;
+
+	Planet(glm::vec3 col, float r, float orbitR, float orbitS, float rotS, std::string n)
+		: color(col), radius(r), orbitRadius(orbitR), orbitSpeed(orbitS), rotationSpeed(rotS),
+		currentOrbitAngle(0.0f), currentRotationAngle(0.0f), name(n) {
+	}
+
+	void update(float deltaTime) {
+		currentOrbitAngle += orbitSpeed * deltaTime;
+		currentRotationAngle += rotationSpeed * deltaTime;
+
+		// Keep angles in reasonable range
+		if (currentOrbitAngle > 360.0f) currentOrbitAngle -= 360.0f;
+		if (currentRotationAngle > 360.0f) currentRotationAngle -= 360.0f;
+	}
+
+	glm::vec3 getPosition() const {
+		return glm::vec3(
+			orbitRadius * cos(glm::radians(currentOrbitAngle)),
+			0.0f,
+			orbitRadius * sin(glm::radians(currentOrbitAngle))
+		);
+	}
+};
+
 // Camera class
 class Camera {
 public:
@@ -112,7 +145,7 @@ public:
 		updateCameraVectors();
 	}
 
-private:
+
 	glm::vec3 worldUp;
 
 	// Calculates the front vector from the Camera's (updated) Euler Angles
@@ -130,13 +163,15 @@ private:
 };
 Camera camera(glm::vec3(0.0f, 0.0f, -3.0f));
 
-glm::vec3 lightPos(-2.2f, 0.0f, -6.0f);
-
+glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
+glm::vec3 testPos(-2.2f, 0.0f, -3.0f);
+glm::vec3 colorObjects(1.0f, 0.5f, 0.31f);
 
 float lastX = height / 2.0f;
 float lastY = width / 2.0f;
 bool firstMouse = true;
 bool captureMouse = true;
+bool animateLight = false;
 
 // Key input polling loop, to be called in the main loop
 void processInput(GLFWwindow* window, Camera& camera, float deltaTime) {
@@ -199,7 +234,6 @@ void mouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 void generateSphereData(float radius, int sectors, int stacks, std::vector<float>& vertices, std::vector<unsigned int>& indices) {
 	float x, y, z, xy;                              // vertex position
 	float nx, ny, nz, lengthInv = 1.0f / radius;    // vertex normal
-	float s, t;                                     // vertex texCoord
 
 	float sectorStep = 2 * M_PI / sectors;
 	float stackStep = M_PI / stacks;
@@ -212,7 +246,7 @@ void generateSphereData(float radius, int sectors, int stacks, std::vector<float
 		z = radius * sinf(stackAngle);              // r * sin(u)
 
 		// add (sectors+1) vertices per stack
-		// the first and last vertices have same position and normal, but different tex coords
+		// the first and last vertices have same position and normal
 		for (int j = 0; j <= sectors; ++j)
 		{
 			sectorAngle = j * sectorStep;           // starting from 0 to 2pi
@@ -231,9 +265,6 @@ void generateSphereData(float radius, int sectors, int stacks, std::vector<float
 			vertices.push_back(nx);
 			vertices.push_back(ny);
 			vertices.push_back(nz);
-
-			// vertex texture coordinate (s, t)
-			
 		}
 	}
 
@@ -395,6 +426,7 @@ int main() {
 	VBO VBO_sphere(sphereVertices.data(), sphereVertices.size() * sizeof(float));
 	EBO EBO_sphere(sphereIndices.data(), sphereIndices.size() * sizeof(unsigned int));
 	VAO_sphere.LinkAttrib(VBO_sphere, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0); // Position
+	VAO_sphere.LinkAttrib(VBO_sphere, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float))); // Normals
 	VAO_sphere.Unbind();
 	VBO_sphere.Unbind();
 	EBO_sphere.Unbind();
@@ -426,11 +458,11 @@ int main() {
 	GLuint tex0Uni = glGetUniformLocation(shaderProgram.ID, "tex0");
 	shaderProgram.Activate();
 	glUniform1i(tex0Uni, 0);
-	*/
+	//break
 
-	glm::vec3 cubePositions[] = {
+	glm::vec3 cubePositionsdef[] = {
 	glm::vec3(0.0f,  0.0f,  0.0f),
-	glm::vec3(2.0f,  5.0f, -15.0f),
+	glm::vec3(2.0f,  0.0f, 0.0f),
 	glm::vec3(-1.5f, -2.2f, -2.5f),
 	glm::vec3(-3.8f, -2.0f, -12.3f),
 	glm::vec3(2.4f, -0.4f, -3.5f),
@@ -440,6 +472,38 @@ int main() {
 	glm::vec3(1.5f,  0.2f, -1.5f),
 	glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
+	std::vector<glm::vec3> cubePositions;
+	float start = -10.0f;
+	for (int i = 0; i < 10; i++) {
+		cubePositions.push_back(glm::vec3(0.0f, 0.0f, (float)i * 3.0f + 4.0f));
+	}
+	*/
+
+
+
+	std::vector<Planet> planets;
+
+	// Sun (at center)
+	planets.push_back(Planet(glm::vec3(1.0f, 1.0f, 0.0f), 2.0f, 0.0f, 0.0f, 5.0f, "Sun"));
+
+	// Inner planets
+	planets.push_back(Planet(glm::vec3(0.8f, 0.7f, 0.6f), 0.4f, 4.0f, 47.9f, 58.6f, "Mercury"));
+	planets.push_back(Planet(glm::vec3(1.0f, 0.8f, 0.4f), 0.6f, 6.0f, 35.0f, -243.0f, "Venus"));
+	planets.push_back(Planet(glm::vec3(0.4f, 0.6f, 1.0f), 0.65f, 8.0f, 30.0f, 24.0f, "Earth"));
+	planets.push_back(Planet(glm::vec3(0.8f, 0.4f, 0.2f), 0.5f, 10.0f, 24.1f, 24.6f, "Mars"));
+
+	// Outer planets (scaled down distances for visibility)
+	planets.push_back(Planet(glm::vec3(0.9f, 0.7f, 0.5f), 1.2f, 14.0f, 13.1f, 9.9f, "Jupiter"));
+	planets.push_back(Planet(glm::vec3(0.9f, 0.9f, 0.7f), 1.0f, 18.0f, 9.7f, 10.7f, "Saturn"));
+	planets.push_back(Planet(glm::vec3(0.4f, 0.8f, 1.0f), 0.8f, 22.0f, 6.8f, -17.2f, "Uranus"));
+	planets.push_back(Planet(glm::vec3(0.2f, 0.4f, 1.0f), 0.8f, 26.0f, 5.4f, 16.1f, "Neptune"));
+
+	// Add these variables for simulation control
+	bool pauseSimulation = false;
+	float simulationSpeed = 1.0f;
+	bool showOrbits = true;
+
+
 
 
 	glm::mat4 model = glm::mat4(1.0f);
@@ -465,12 +529,27 @@ int main() {
 
 		glClearColor(0.09f, 0.25f, 0.5f, 1.0f);
 		
-		lightPos.y = sin(glfwGetTime() / 2.0f) * 4.0f;
+		if (animateLight) {
+			float rotationAngle = 0.0001; // Small angle in radians for incremental rotation
+
+			// Store the original y and z values temporarily
+			float originalY = lightPos.y;
+			float originalZ = lightPos.z;
+
+			// Apply the x-axis rotation formula
+			lightPos.y = originalY * cos(rotationAngle) - originalZ * sin(rotationAngle);
+			lightPos.z = originalY * sin(rotationAngle) + originalZ * cos(rotationAngle);
+		}
+		
+
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		shaderProgram.Activate();
 
-		int objCol = glGetUniformLocation(shaderProgram.ID, "objectColor");
-		glUniform3f(objCol, 1.0f, 0.5f, 0.31f); //color of our objects
+		//int objCol = glGetUniformLocation(shaderProgram.ID, "objectColor");
+		//glUniform3f(objCol, 1.0f, 0.5f, 0.31f); //color of our objects
+		shaderProgram.setVec3("objectColor", colorObjects);
+
 
 		int lightCol = glGetUniformLocation(shaderProgram.ID, "lightColor");
 		glUniform3f(lightCol, 1.0f, 1.0f, 1.0f); //color of our light
@@ -499,30 +578,86 @@ int main() {
 		shaderProgram.setVec3("lightPos", lightPos);
 		shaderProgram.setVec3("viewPos", camera.pos);
 		/*
+		float size = 2.0f;
 		for (unsigned int i = 0; i < 10; i++)
 		{
 			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePositions[i]);
-			float angle = 10.0f * i + 6;
+			model = glm::translate(model, glm::vec3(i * size, 0.0f, 0.0f));
+			//model = glm::translate(model, cubePositions[i]);
+			model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
+			//float angle = 10.0f * i + 6;
 			//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			//glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+		for (unsigned int i = 0; i < 10; i++)
+		{
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, glm::vec3(i * (-size), 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
+			//float angle = 10.0f * i + 6;
+			//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			//glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+		//break
+		VAO_sphere.Bind();
+		int spheretestloc = glGetUniformLocation(shaderProgram.ID, "model");
+		
+		for (int i = 0; i < 10; i++) {
+			glm::mat4 sphereModeltest = glm::mat4(1.0f);
+
+			// Different rotation speed for each sphere (optional)
+			float rotationSpeed = 50.0f + (i * 5.0f); // Each sphere rotates at different speed
+			sphereModeltest = glm::rotate(sphereModeltest, (float)glfwGetTime() * glm::radians(rotationSpeed), glm::vec3(0.0f, 1.0f, 0.0f));
+			sphereModeltest = glm::translate(sphereModeltest, cubePositions[i]);
+
+			glUniformMatrix4fv(spheretestloc, 1, GL_FALSE, glm::value_ptr(sphereModeltest));
+			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 		}
 		*/
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, cubePositions[0]);
-		float angle = 10.0f * 0 + 6;
-		model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
-		//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		if (!pauseSimulation) {
+			for (auto& planet : planets) {
+				planet.update(deltaTime * simulationSpeed);
+			}
+		}
+		int spheretestloc = glGetUniformLocation(shaderProgram.ID, "model");
+		VAO_sphere.Bind();
+		for (size_t i = 0; i < planets.size(); ++i) {
+			Planet& planet = planets[i];
+
+			glm::mat4 planetModel = glm::mat4(1.0f);
+
+			if (i == 0) {
+				// Sun 
+				continue;
+			}
+			else {
+				// Other planets orbit and rotate
+				glm::vec3 planetPos = planet.getPosition();
+				planetModel = glm::translate(planetModel, planetPos);
+				planetModel = glm::rotate(planetModel, glm::radians(planet.currentRotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+			}
+
+			// Scale planet
+			planetModel = glm::scale(planetModel, glm::vec3(planet.radius));
+
+			// Set planet color
+			shaderProgram.setVec3("objectColor", planet.color);
+
+			glUniformMatrix4fv(spheretestloc, 1, GL_FALSE, glm::value_ptr(planetModel));
+			glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+		}
+
+
+
+
 		
 
 
-		glm::mat4 sphereModel = glm::mat4(1.0f);
 		lightShader.Activate();
 
-		VAO_sphere.Bind();
+		
 
 		
 		
@@ -535,10 +670,10 @@ int main() {
 		int viewLoc1 = glGetUniformLocation(lightShader.ID, "view");
 		glUniformMatrix4fv(viewLoc1, 1, GL_FALSE, glm::value_ptr(view));
 		
-		
+		glm::mat4 sphereModel = glm::mat4(1.0f);
 
 		sphereModel = glm::translate(sphereModel, lightPos);
-		sphereModel = glm::scale(sphereModel, glm::vec3(0.8f));
+		sphereModel = glm::scale(sphereModel, glm::vec3(0.5f));
 		glUniformMatrix4fv(modelLoc1, 1, GL_FALSE, glm::value_ptr(sphereModel));
 		glDrawElements(GL_TRIANGLES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
@@ -551,21 +686,44 @@ int main() {
 		*/
 
 		if (GUI) {
+			
+			
+			
 			ImGui::Begin("Camera Debug", &GUI);
 			ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", camera.pos.x, camera.pos.y, camera.pos.z);
 			ImGui::Text("Camera Front: (%.2f, %.2f, %.2f)", camera.front.x, camera.front.y, camera.front.z);
 			ImGui::SliderFloat("FOV", &camera.fov, 1, 90);
 			if (ImGui::SliderFloat("Yaw", &camera.yaw, -180.0f, 180.0f)) {
-				camera.processGUIMovement(camera.yaw, 0);
+				camera.updateCameraVectors();
 			}
 			if (ImGui::SliderFloat("Pitch", &camera.pitch, -89.0f, 89.0f)) {
-				camera.processGUIMovement(0, camera.pitch);
+				camera.updateCameraVectors();
 			}
+			ImGui::Checkbox("Animate Light", &animateLight);
+			ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f, -100.0f, 100.0f);
+			ImGui::DragFloat3("Object Color", &colorObjects.x, 0.01f, 0.0f, 1.0f);
 			if (ImGui::Button("Capture Mouse"))
 			{
 				captureMouse = true;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
+			ImGuiIO& io = ImGui::GetIO();
+			ImGui::Separator();
+			ImGui::Text("Solar System Controls");
+			ImGui::Checkbox("Pause Simulation", &pauseSimulation);
+			ImGui::SliderFloat("Simulation Speed", &simulationSpeed, 0.1f, 10.0f);
+			
+
+			ImGui::Separator();
+			ImGui::Text("Planet Information");
+			for (size_t i = 0; i < planets.size(); ++i) {
+				Planet& planet = planets[i];
+				ImGui::Text("%s: Orbit %.1f°, Rotation %.1f°",
+					planet.name.c_str(),
+					planet.currentOrbitAngle,
+					planet.currentRotationAngle);
+			}
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::End();
 		}
 
@@ -589,3 +747,37 @@ int main() {
 	ImGui::DestroyContext();
 	return 0;
 }
+struct Material
+{
+	glm::vec3 ambient;
+	glm::vec3 diffuse;
+	glm::vec3 specular;
+	float shininess;
+};
+
+Material materialValues[] = {
+{ glm::vec3(0.0215,0.1745,0.0215) ,glm::vec3(0.07568,0.61424,0.07568),glm::vec3(0.633,0.727811,0.633) ,0.6}, //emerald 
+{ glm::vec3(0.135,0.2225,0.1575) ,glm::vec3(0.54,0.89,0.63) ,glm::vec3(0.316228,0.316228,0.316228),0.1}, //jade
+{ glm::vec3(0.05375,0.05,0.06625) ,glm::vec3(0.18275,0.17,0.22525) ,glm::vec3(0.332741,0.328634,0.346435),0.3}, //obsidian
+{ glm::vec3(0.25,0.20725,0.20725) ,glm::vec3(1,0.829,0.829) ,glm::vec3(0.296648,0.296648,0.296648),0.088}, //pearl
+{ glm::vec3(0.1745,0.01175,0.01175),glm::vec3(0.61424,0.04136,0.04136),glm::vec3(0.727811,0.626959,0.626959),0.6}, //ruby
+{ glm::vec3(0.1,0.18725,0.1745) ,glm::vec3(0.396,0.74151,0.69102) ,glm::vec3(0.297254,0.30829,0.306678) ,0.1}, //turquoise
+{ glm::vec3(0.329412,0.223529,0.027451),glm::vec3(0.780392,0.568627,0.113725), glm::vec3(0.992157,0.941176,0.807843),0.21794872}, //brass
+{ glm::vec3(0.2125,0.1275,0.054), glm::vec3(0.714,0.4284,0.18144) ,glm::vec3(0.393548,0.271906,0.166721), 0.2}, //bronze
+{ glm::vec3(0.25,0.25,0.25) ,glm::vec3(0.4,0.4,0.4) ,glm::vec3(0.774597,0.774597,0.774597), 0.6}, //chrome
+{ glm::vec3(0.19125,0.0735,0.0225) ,glm::vec3(0.7038,0.27048,0.0828) ,glm::vec3(0.256777,0.137622,0.086014),0.1}, //copper
+{ glm::vec3(0.24725,0.1995,0.0745) ,glm::vec3(0.75164,0.60648,0.22648) ,glm::vec3(0.628281,0.555802,0.366065),0.4}, //gold
+{ glm::vec3(0.19225,0.19225,0.19225),glm::vec3(0.50754,0.50754,0.50754) ,glm::vec3(0.508273,0.508273,0.508273),0.4}, //silver
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.01,0.01,0.01) ,glm::vec3(0.50,0.50,0.50), .25 }, //black plastic
+{ glm::vec3(0.0,0.1,0.06) ,glm::vec3(0.0,0.50980392,0.50980392),glm::vec3(0.50196078,0.50196078,0.50196078), .25}, //cyan plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.1 ,0.35,0.1) ,glm::vec3(0.45,0.55,0.45),.25 }, //green plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.5 ,0.0,0.0) ,glm::vec3(0.7,0.6 ,0.6),.25 }, //red plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.55 ,0.55,0.55) ,glm::vec3(0.70,0.70,0.70),.25 }, //white plastic
+{ glm::vec3(0.0,0.0,0.0) ,glm::vec3(0.5 ,0.5,0.0) ,glm::vec3(0.60,0.60,0.50),.25 }, //yellow plastic
+{ glm::vec3(0.02,0.02,0.02) ,glm::vec3(0.01,0.01,0.01) ,glm::vec3(0.4,0.4 ,0.4),.078125}, //black rubber
+{ glm::vec3(0.0,0.05,0.05) ,glm::vec3(0.4 ,0.5,0.5) ,glm::vec3(0.04,0.7,0.7) ,.078125}, //cyan rubber
+{ glm::vec3(0.0,0.05,0.0) ,glm::vec3(0.4 ,0.5,0.4) ,glm::vec3(0.04,0.7,0.04) ,.078125}, //green rubber
+{ glm::vec3(0.05,0.0,0.0) ,glm::vec3(0.5 ,0.4,0.4) ,glm::vec3(0.7,0.04,0.04) ,.078125}, //red rubber
+{ glm::vec3(0.05,0.05,0.05) ,glm::vec3(0.5,0.5,0.5) ,glm::vec3(0.7,0.7,0.7) ,.078125}, //white rubber
+{ glm::vec3(0.05,0.05,0.0) ,glm::vec3(0.5,0.5,0.4) ,glm::vec3(0.7,0.7,0.04) ,.078125 } //yellow rubber
+};

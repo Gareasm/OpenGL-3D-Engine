@@ -94,4 +94,9 @@
       <Filter>Resource Files\Textures</Filter>
     </Image>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="todo.txt">
+      <Filter>Source Files</Filter>
+    </Text>
+  </ItemGroup>
 </Project>

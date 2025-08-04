@@ -164,6 +164,9 @@
   <ItemGroup>
     <Image Include="..\..\Users\garea\Downloads\brick.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="todo.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
