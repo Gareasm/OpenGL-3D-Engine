@@ -74,6 +74,8 @@
     <None Include="light.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
+    <None Include="model.frag" />
+    <None Include="model.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderClass.h">
@@ -86,6 +88,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VAO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
