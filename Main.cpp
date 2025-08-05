@@ -129,7 +129,7 @@ private:
 	}
 };
 Camera camera(glm::vec3(0.0f, 0.0f, -3.0f));
-
+glm::vec3 objectColor(1.0f, 0.0f, 0.5f);
 glm::vec3 lightPos(-2.2f, 0.0f, -6.0f);
 
 
@@ -137,6 +137,8 @@ float lastX = height / 2.0f;
 float lastY = width / 2.0f;
 bool firstMouse = true;
 bool captureMouse = true;
+bool animateLight = false;
+
 
 // Key input polling loop, to be called in the main loop
 void processInput(GLFWwindow* window, Camera& camera, float deltaTime) {
@@ -159,7 +161,6 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime) {
 		firstMouse = true;
 	}
 }
-
 // Mouse callback function
 void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 	
@@ -458,19 +459,29 @@ int main() {
 		if(!captureMouse){
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
-		
+		if (animateLight) {
+			float rotationAngle = 0.0001; // Small angle in radians for incremental rotation
+
+			// Store the original y and z values temporarily
+			float originalY = lightPos.y;
+			float originalZ = lightPos.z;
+
+			// Apply the x-axis rotation formula
+			lightPos.y = originalY * cos(rotationAngle) - originalZ * sin(rotationAngle);
+			lightPos.z = originalY * sin(rotationAngle) + originalZ * cos(rotationAngle);
+		}
 
 		// Process keyboard input
 		processInput(window, camera, deltaTime);
 
 		glClearColor(0.09f, 0.25f, 0.5f, 1.0f);
 		
-		lightPos.y = sin(glfwGetTime() / 2.0f) * 4.0f;
+		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		shaderProgram.Activate();
 
-		int objCol = glGetUniformLocation(shaderProgram.ID, "objectColor");
-		glUniform3f(objCol, 1.0f, 0.5f, 0.31f); //color of our objects
+		
+		shaderProgram.setVec3("objectColor", objectColor);
 
 		int lightCol = glGetUniformLocation(shaderProgram.ID, "lightColor");
 		glUniform3f(lightCol, 1.0f, 1.0f, 1.0f); //color of our light
@@ -566,6 +577,9 @@ int main() {
 				captureMouse = true;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
+			ImGui::Checkbox("Animate Light", &animateLight);
+			ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f, -100.0f, 100.0f);
+			ImGui::DragFloat3("Object Color", &objectColor.x, 0.01f, 0.0f, 1.0f);
 			ImGui::End();
 		}
 
