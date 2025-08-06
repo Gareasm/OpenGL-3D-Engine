@@ -139,7 +139,7 @@ private:
 };
 Camera camera(glm::vec3(0.0f, 0.0f, -3.0f));
 glm::vec3 objectColor(1.0f, 0.0f, 0.5f);
-glm::vec3 lightPos(-2.2f, 0.0f, -6.0f);
+glm::vec3 lightPos(2.2f, 0.0f, -6.0f);
 
 
 
@@ -147,7 +147,6 @@ float lastX = height / 2.0f;
 float lastY = width / 2.0f;
 bool firstMouse = true;
 bool captureMouse = true;
-bool animateLight = false;
 
 
 // Key input polling loop, to be called in the main loop
@@ -279,15 +278,41 @@ int main() {
 	// load models
 	// -----------
 
-	
-	Model ourModel("backpack/backpack.obj");
+	//Model ourModel("backpack/backpack.obj");
+	Model ourModel("subaru_impreza.glb");
 	std::cout << "Model loaded with " << ourModel.meshes.size() << " meshes" << std::endl;
 	if (ourModel.meshes.empty()) {
 		std::cout << "ERROR: Failed to load model or model has no meshes!" << std::endl;
 		return -1;
 	}
 
+	std::cout << "=== MODEL DEBUG INFO ===" << std::endl;
+	std::cout << "Number of meshes: " << ourModel.meshes.size() << std::endl;
+	std::cout << "Number of textures loaded: " << ourModel.textures_loaded.size() << std::endl;
 
+	// Debug each mesh
+	for (size_t i = 0; i < ourModel.meshes.size(); ++i) {
+		auto& mesh = ourModel.meshes[i];
+		std::cout << "\nMesh " << i << ":" << std::endl;
+		std::cout << "  Vertices: " << mesh.vertices.size() << std::endl;
+		std::cout << "  Indices: " << mesh.indices.size() << std::endl;
+		std::cout << "  Textures: " << mesh.textures.size() << std::endl;
+
+		// Debug textures for this mesh
+		for (size_t j = 0; j < mesh.textures.size(); ++j) {
+			auto& tex = mesh.textures[j];
+			std::cout << "    Texture " << j << ": " << tex.type
+				<< " (ID: " << tex.id << ", Path: '" << tex.path << "')" << std::endl;
+		}
+	}
+
+	// Test if any textures were loaded at all
+	if (ourModel.textures_loaded.empty()) {
+		std::cout << "\nWARNING: No textures were loaded from GLB file!" << std::endl;
+		std::cout << "This could be normal for GLB files with embedded textures." << std::endl;
+	}
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	while (!glfwWindowShouldClose(window)) {
 		// Calculate delta time
@@ -323,8 +348,9 @@ int main() {
 
 		// render the loaded model
 		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.0f));
 		model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
+		model = glm::rotate(model, glm::radians(270.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 		modelShader.setMat4("model", model);
 		ourModel.Draw(modelShader);
 
@@ -349,7 +375,7 @@ int main() {
 				captureMouse = true;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
-			ImGui::Checkbox("Animate Light", &animateLight);
+			
 			ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f, -100.0f, 100.0f);
 			ImGui::DragFloat3("Object Color", &objectColor.x, 0.01f, 0.0f, 1.0f);
 			ImGui::End();
