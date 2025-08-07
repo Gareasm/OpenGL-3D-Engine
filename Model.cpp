@@ -1,82 +1,102 @@
 // Add this implementation to your model.h or create a model.cpp file
 #include "model.h"
-
 void Model::loadModel(string const& path)
 {
-    // read file via ASSIMP and keep the importer alive
-    scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes);
+    // Use better flags for GLB files - especially important for larger models
+    unsigned int flags = aiProcess_Triangulate |
+        aiProcess_GenSmoothNormals |
+        aiProcess_CalcTangentSpace |
+        //aiProcess_FlipUVs |          // Important for GLB files
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_ValidateDataStructure |
+        aiProcess_ImproveCacheLocality |
+        aiProcess_RemoveRedundantMaterials |
+        aiProcess_FixInfacingNormals |
+        aiProcess_OptimizeMeshes;
 
-    // check for errors
+    scene = importer.ReadFile(path, flags);
+
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
         cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << endl;
         return;
     }
 
-    // retrieve the directory path of the filepath
     directory = path.substr(0, path.find_last_of('/'));
 
-    // Debug: Print embedded texture info
-    cout << "Scene has " << scene->mNumTextures << " embedded textures" << endl;
-    for (unsigned int i = 0; i < scene->mNumTextures; i++) {
-        aiTexture* tex = scene->mTextures[i];
-        cout << "Embedded texture " << i << ": ";
-        if (tex->mHeight == 0) {
-            cout << "Compressed format, size: " << tex->mWidth << " bytes" << endl;
-        }
-        else {
-            cout << "Uncompressed, " << tex->mWidth << "x" << tex->mHeight << " pixels" << endl;
-        }
-    }
+    // Debug scene information
+    cout << "=== SCENE DEBUG INFO ===" << endl;
+    cout << "Root node children: " << scene->mRootNode->mNumChildren << endl;
+    cout << "Total meshes: " << scene->mNumMeshes << endl;
+    cout << "Materials: " << scene->mNumMaterials << endl;
+    cout << "Embedded textures: " << scene->mNumTextures << endl;
 
-    // process ASSIMP's root node recursively
-    processNode(scene->mRootNode, scene);
+    // Print root node transformation
+    aiMatrix4x4& rootTransform = scene->mRootNode->mTransformation;
+    cout << "Root transform: [" << rootTransform.a1 << "," << rootTransform.a2 << "," << rootTransform.a3 << "," << rootTransform.a4 << "]" << endl;
+
+    // Process with identity matrix initially
+    processNode(scene->mRootNode, scene, glm::mat4(1.0f));
 }
 
-void Model::processNode(aiNode* node, const aiScene* scene)
+void Model::processNode(aiNode* node, const aiScene* scene, glm::mat4 parentTransform)
 {
-    // process each mesh located at the current node
+    // Convert assimp matrix to glm matrix
+    glm::mat4 nodeTransform = aiMatrix4x4ToGlm(node->mTransformation);
+
+    // Apply parent transformation
+    glm::mat4 globalTransform = parentTransform * nodeTransform;
+
+    // Debug node information
+    cout << "Processing node: " << node->mName.C_Str()
+        << " with " << node->mNumMeshes << " meshes" << endl;
+
+    // Process each mesh in this node
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        meshes.push_back(processMesh(mesh, scene));
+        meshes.push_back(processMesh(mesh, scene, globalTransform));
     }
-    // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
+
+    // Process child nodes recursively
     for (unsigned int i = 0; i < node->mNumChildren; i++)
     {
-        processNode(node->mChildren[i], scene);
+        processNode(node->mChildren[i], scene, globalTransform);
     }
 }
 
-Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
+Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene, glm::mat4 transform)
 {
-    // data to fill
     vector<Vertex> vertices;
     vector<unsigned int> indices;
     vector<Texture> textures;
 
-    // walk through each of the mesh's vertices
+    // Debug mesh information
+    cout << "Processing mesh with " << mesh->mNumVertices << " vertices" << endl;
+
+    // Process vertices with transformation applied
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
         Vertex vertex;
-        glm::vec3 vector;
 
-        // positions
-        vector.x = mesh->mVertices[i].x;
-        vector.y = mesh->mVertices[i].y;
-        vector.z = mesh->mVertices[i].z;
-        vertex.Position = vector;
+        // Apply transformation to vertex position
+        glm::vec4 pos = glm::vec4(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z, 1.0f);
+        pos = transform * pos;
+        vertex.Position = glm::vec3(pos.x, pos.y, pos.z);
 
-        // normals
+        // Transform normals (use inverse transpose for correct normal transformation)
         if (mesh->HasNormals())
         {
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.Normal = vector;
+            glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(transform)));
+            glm::vec3 normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+            vertex.Normal = glm::normalize(normalMatrix * normal);
+        }
+        else
+        {
+            vertex.Normal = glm::vec3(0.0f, 1.0f, 0.0f); // Default normal
         }
 
-        // texture coordinates
+        // Texture coordinates
         if (mesh->mTextureCoords[0])
         {
             glm::vec2 vec;
@@ -84,29 +104,30 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
             vec.y = mesh->mTextureCoords[0][i].y;
             vertex.TexCoords = vec;
 
-            // tangent
+            // Transform tangents if available
             if (mesh->mTangents) {
-                vector.x = mesh->mTangents[i].x;
-                vector.y = mesh->mTangents[i].y;
-                vector.z = mesh->mTangents[i].z;
-                vertex.Tangent = vector;
+                glm::vec3 tangent = glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
+                vertex.Tangent = glm::normalize(glm::mat3(transform) * tangent);
             }
 
-            // bitangent
             if (mesh->mBitangents) {
-                vector.x = mesh->mBitangents[i].x;
-                vector.y = mesh->mBitangents[i].y;
-                vector.z = mesh->mBitangents[i].z;
-                vertex.Bitangent = vector;
+                glm::vec3 bitangent = glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
+                vertex.Bitangent = glm::normalize(glm::mat3(transform) * bitangent);
             }
         }
         else
             vertex.TexCoords = glm::vec2(0.0f, 0.0f);
 
+        // Initialize bone data to zero
+        for (int j = 0; j < MAX_BONE_INFLUENCE; j++) {
+            vertex.m_BoneIDs[j] = 0;
+            vertex.m_Weights[j] = 0.0f;
+        }
+
         vertices.push_back(vertex);
     }
 
-    // process indices
+    // Process indices (unchanged)
     for (unsigned int i = 0; i < mesh->mNumFaces; i++)
     {
         aiFace face = mesh->mFaces[i];
@@ -114,24 +135,23 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
             indices.push_back(face.mIndices[j]);
     }
 
-    // process materials
-    aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+    // Process materials (unchanged)
+    if (mesh->mMaterialIndex >= 0)
+    {
+        aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-    // 1. diffuse maps
-    vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-    textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 
-    // 2. specular maps
-    vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-    textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 
-    // 3. normal maps
-    std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
-    textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+        vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+        textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
-    // 4. height maps
-    std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
-    textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
+        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+    }
 
     return Mesh(vertices, indices, textures);
 }

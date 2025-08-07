@@ -63,6 +63,18 @@
     <ClCompile Include="Model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="default.vert">
@@ -79,6 +91,7 @@
     </None>
     <None Include="model.frag" />
     <None Include="model.vert" />
+    <None Include="..\..\Users\garea\Downloads\grid.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderClass.h">
