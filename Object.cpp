@@ -236,3 +236,19 @@ void LightSrc::draw(Shader shader, Camera cam, glm::vec3 lightPos, glm::vec3 lig
 
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 }
+
+//Emplaces an object 0=CUBE 1=SPHERE
+void addShape(std::vector<Object>& objs, int s){
+    switch (s) {
+        case 0:
+            objs.emplace_back(Cube());
+            break;
+        case 1:
+            objs.emplace_back(Sphere());
+            break;
+     
+        default:
+            printf("No valid shape declaration");
+
+     }
+}

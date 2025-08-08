@@ -25,6 +25,9 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
 class Model
 {
 public:
+    glm::vec3 pos;
+    glm::vec3 angle;
+ 
     vector<Texture> textures_loaded;
     vector<Mesh>    meshes;
     string directory;
@@ -36,6 +39,9 @@ public:
 
     Model(string const& path, bool gamma = false) : gammaCorrection(gamma)
     {
+        pos = glm::vec3(0.0f, 0.0f, 0.0f);
+        angle = glm::vec3(0.0f, 0.0f, 0.0f);
+
         loadModel(path);
     }
 

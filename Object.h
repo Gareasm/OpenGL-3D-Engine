@@ -62,4 +62,7 @@ public:
     void draw(Shader shader, Camera cam, glm::vec3 lightPos, glm::vec3 lightCol, float ar) override;
 };
 
+
+void addShape(std::vector<Object> &objs, int s);
+
 #endif // OBJECTS_H

@@ -1,6 +1,6 @@
 #include<iostream>
 #include<vector>
-#include<math.h>
+
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
 #include<stb/stb_image.h>
@@ -41,7 +41,7 @@ float const width = 1200;
 
 Camera camera(glm::vec3(0.0f, 0.0f, -3.0f));
 glm::vec3 objectColor(1.0f, 0.0f, 0.5f);
-glm::vec3 lightPos(2.2f, 0.0f, -6.0f);
+glm::vec3 lightPos(7.0f, 7.0f, 0.0f);
 glm::vec3 lightCol(1.0f, 1.0f, 1.0f);
 
 
@@ -74,7 +74,7 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime) {
 		firstMouse = true;
 	}
 }
-// Mouse callback function
+// Mouse callback function-pos
 void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 	
 	if (!captureMouse) {
@@ -93,6 +93,7 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 
 	camera.processMouseMovement(xoffset, yoffset);
 }
+// Mouse callback function-scroll
 void mouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	// Zoom in when scrolling up (positive yoffset)
 	if (yoffset > 0) {
@@ -186,9 +187,9 @@ int main() {
 
 	//Model ourModel("models/backpack/backpack.obj");
 	Model ourModel2("models/subaru_impreza.glb");
-	Model ourModel("models/modern_luxury_wedding_arch_house_building_design.glb");
-
-
+	//Model ourModel("models/modern_luxury_wedding_arch_house_building_design.glb");
+	//Model ourModel("models/beautiful_city.glb");
+	Model ourModel("models/brutalist_interior.glb");
 	//Model ourModel("Aristotle.obj");
 	std::cout << "Model loaded with " << ourModel.meshes.size() << " meshes" << std::endl;
 	if (ourModel.meshes.empty()) {
@@ -239,7 +240,7 @@ int main() {
 	objs.emplace_back(Sphere());
 
 	
-	
+	glm::vec3 bkColor(0.9f, 0.9f, 0.9f);
 
 
 	while (!glfwWindowShouldClose(window)) {
@@ -260,8 +261,9 @@ int main() {
 		// Process keyboard input
 		processInput(window, camera, deltaTime);
 
-		// Clear the screen
-		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+		// Clear the screen'
+
+		glClearColor(bkColor.r, bkColor.g, bkColor.b, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		 
@@ -291,22 +293,22 @@ int main() {
 
 		// render the loaded model
 		glm::mat4 model = glm::mat4(1.0f);
-		//model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f)); // Scale down by 100x
-		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 6.0f));
-		/*
-		model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.0f));
-		model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
-		model = glm::rotate(model, glm::radians(270.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-		*/
 		modelShader.setMat4("model", model);
 		ourModel.Draw(modelShader);
 
+
+
 		model = glm::mat4(1.0f);
-		model = glm::translate(model, mod2trans);
+		model = glm::translate(model, ourModel2.pos);
+		model = glm::rotate(model, glm::radians(ourModel2.angle.x), glm::vec3(1.0f, 0.0f, 0.0f)); //x
+		model = glm::rotate(model, glm::radians(ourModel2.angle.y), glm::vec3(0.0f, 1.0f, 0.0f)); //y
+		model = glm::rotate(model, glm::radians(ourModel2.angle.z), glm::vec3(0.0f, 0.0f, 1.0f)); //z
 		model = glm::scale(model, glm::vec3(0.007f, 0.007f, 0.007f)); // Scale down by 100x
-		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		
 		modelShader.setMat4("model", model);
+
+
+
 
 		ourModel2.Draw(modelShader);
 
@@ -334,16 +336,18 @@ int main() {
 				captureMouse = true;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
-			
-			
-			ImGui::DragFloat3("Model Position", &mod2trans.x, 0.01f, -1000.0f, 1000.0f);
-
-			
-
-			
-			
 			ImGuiIO& io = ImGui::GetIO();
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+			ImGui::End();
+			
+
+			ImGui::Begin("Model", &GUI);
+
+			ImGui::DragFloat3("Model Position", &ourModel2.pos.x, 0.01f, -1000.0f, 1000.0f);
+			ImGui::DragFloat3("Rotation", &ourModel2.angle.x, 0.1f, -360.0f, 360.0f);
+			
+
+	
 			ImGui::End();
 
 
@@ -351,6 +355,7 @@ int main() {
 			ImGui::Begin("Light Settings", &GUI);
 			ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f, -100.0f, 100.0f);
 			ImGui::ColorPicker3("Light Color", &lightCol.r);
+			ImGui::ColorPicker3("Background Color", &bkColor.r);
 			ImGui::End();
 
 
@@ -362,7 +367,7 @@ int main() {
 				ImGui::Begin(frame.c_str(), &GUI);
 				ImGui::DragFloat3("Position", &obj.pos.x, 0.1f, -1000.0f, 1000.0f);
 				ImGui::DragFloat("Scale", &obj.size, 0.1f, -0.01f, 1000.0f);
-				ImGui::DragFloat("Rotate", &obj.angle, 0.1f, 0.0f, 360.0f);
+				ImGui::DragFloat("Rotate", &obj.angle, 0.1f, -360.0f, 360.0f);
 				ImGui::ColorPicker3("Color", &obj.col.r);
 				ImGui::End();
 			}
