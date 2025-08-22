@@ -1,6 +1,6 @@
 #include<iostream>
 #include<vector>
-#include<math.h>
+
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
 #include<stb/stb_image.h>
@@ -19,6 +19,9 @@
 #include "EBO.h"
 #include "model.h"
 
+#include "Object.h"
+
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -35,119 +38,19 @@ float const width = 1200;
 
 
 // Camera class
-class Camera {
-public:
-	// Position of the camera
-	glm::vec3 pos;
-	// Direction the camera is looking at
-	glm::vec3 front;
-	// The 'up' direction of the camera
-	glm::vec3 up;
-	// The camera's right vector (used for strafing)
-	glm::vec3 right;
 
-	// Euler angles
-	float yaw;
-	float pitch;
-	float fov;
-	// Camera options
-	float movementSpeed;
-	float mouseSensitivity;
-
-	Camera(glm::vec3 pos = glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f, float pitch = 0.0f, float fov = 45.0f) {
-		this->pos = pos;
-		this->yaw = yaw;
-		this->pitch = pitch;
-		this->fov = fov;
-		this->worldUp = worldUp;
-		this->movementSpeed = 2.5f;
-		this->mouseSensitivity = 0.1f;
-		updateCameraVectors();
-	}
-
-	// Function to calculate the view matrix
-	glm::mat4 getViewMatrix() {
-		// Use glm::lookAt for a proper 3D view matrix
-		return glm::lookAt(pos, pos + front, up);
-	}
-
-	// Processes input received from a keyboard
-	void processKeyboard(float deltaTime, int direction) {
-		float velocity = movementSpeed * deltaTime;
-		if (direction == GLFW_KEY_W)
-			pos += front * velocity;
-		if (direction == GLFW_KEY_S)
-			pos -= front * velocity;
-		if (direction == GLFW_KEY_A)
-			pos -= right * velocity;
-		if (direction == GLFW_KEY_D)
-			pos += right * velocity;
-		if (direction == GLFW_KEY_E)
-			pos += up * velocity;
-		if (direction == GLFW_KEY_Q)
-			pos -= up * velocity;
-	}
-
-	// Processes input received from a mouse
-	void processMouseMovement(float xoffset, float yoffset) {
-		xoffset *= mouseSensitivity;
-		yoffset *= mouseSensitivity;
-
-		yaw += xoffset;
-		pitch += yoffset;
-
-		// Make sure that when pitch is out of bounds, screen doesn't get flipped
-		
-		if (pitch > 89.0f)
-			pitch = 89.0f;
-		if (pitch < -89.0f)
-			pitch = -89.0f;
-			
-		updateCameraVectors();
-	}
-	void processGUIMovement(float xoffset, float yoffset) {
-		
-
-		yaw += xoffset;
-		pitch += yoffset;
-
-		// Make sure that when pitch is out of bounds, screen doesn't get flipped
-
-		if (pitch > 89.0f)
-			pitch = 89.0f;
-		if (pitch < -89.0f)
-			pitch = -89.0f;
-
-		updateCameraVectors();
-	}
-
-private:
-	glm::vec3 worldUp;
-
-	// Calculates the front vector from the Camera's (updated) Euler Angles
-	void updateCameraVectors() {
-		// Calculate the new front vector
-		glm::vec3 newFront;
-		newFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-		newFront.y = sin(glm::radians(pitch));
-		newFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-		front = glm::normalize(newFront);
-		// Also re-calculate the right and up vector
-		right = glm::normalize(glm::cross(front, worldUp));
-		up = glm::normalize(glm::cross(right, front));
-	}
-};
 Camera camera(glm::vec3(0.0f, 0.0f, -3.0f));
 glm::vec3 objectColor(1.0f, 0.0f, 0.5f);
-glm::vec3 lightPos(-2.2f, 0.0f, -6.0f);
-
+glm::vec3 lightPos(7.0f, 7.0f, 0.0f);
+glm::vec3 lightCol(1.0f, 1.0f, 1.0f);
 
 
 float lastX = height / 2.0f;
 float lastY = width / 2.0f;
 bool firstMouse = true;
 bool captureMouse = true;
-bool animateLight = false;
+
+glm::vec3 mod2trans(0.0f, 0.0f, 0.0f);
 
 
 // Key input polling loop, to be called in the main loop
@@ -171,7 +74,7 @@ void processInput(GLFWwindow* window, Camera& camera, float deltaTime) {
 		firstMouse = true;
 	}
 }
-// Mouse callback function
+// Mouse callback function-pos
 void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 	
 	if (!captureMouse) {
@@ -190,6 +93,7 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
 
 	camera.processMouseMovement(xoffset, yoffset);
 }
+// Mouse callback function-scroll
 void mouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	// Zoom in when scrolling up (positive yoffset)
 	if (yoffset > 0) {
@@ -207,6 +111,8 @@ void mouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 		camera.fov = 90.0f;
 	}
 }
+
+
 
 
 int main() {
@@ -257,8 +163,8 @@ int main() {
 
 
 
-	//Shader shaderProgram("default.vert", "default.frag");
-	//Shader lightShader("light.vert", "light.frag");
+	Shader shaderProgram("default.vert", "default.frag");
+	Shader lightShader("light.vert", "light.frag");
 	Shader modelShader("model.vert", "model.frag");
 	modelShader.Activate();
 	
@@ -279,14 +185,62 @@ int main() {
 	// load models
 	// -----------
 
-	
-	Model ourModel("backpack/backpack.obj");
+	//Model ourModel("models/backpack/backpack.obj");
+	Model ourModel2("models/subaru_impreza.glb");
+	//Model ourModel("models/modern_luxury_wedding_arch_house_building_design.glb");
+	//Model ourModel("models/beautiful_city.glb");
+	Model ourModel("models/brutalist_interior.glb");
+	//Model ourModel("Aristotle.obj");
 	std::cout << "Model loaded with " << ourModel.meshes.size() << " meshes" << std::endl;
 	if (ourModel.meshes.empty()) {
 		std::cout << "ERROR: Failed to load model or model has no meshes!" << std::endl;
 		return -1;
 	}
 
+	std::cout << "=== MODEL DEBUG INFO ===" << std::endl;
+	std::cout << "Number of meshes: " << ourModel.meshes.size() << std::endl;
+	std::cout << "Number of textures loaded: " << ourModel.textures_loaded.size() << std::endl;
+
+	// Debug each mesh
+	for (size_t i = 0; i < ourModel.meshes.size(); ++i) {
+		auto& mesh = ourModel.meshes[i];
+		std::cout << "\nMesh " << i << ":" << std::endl;
+		std::cout << "  Vertices: " << mesh.vertices.size() << std::endl;
+		std::cout << "  Indices: " << mesh.indices.size() << std::endl;
+		std::cout << "  Textures: " << mesh.textures.size() << std::endl;
+
+		// Debug textures for this mesh
+		for (size_t j = 0; j < mesh.textures.size(); ++j) {
+			auto& tex = mesh.textures[j];
+			std::cout << "    Texture " << j << ": " << tex.type
+				<< " (ID: " << tex.id << ", Path: '" << tex.path << "')" << std::endl;
+		}
+	}
+
+	// Test if any textures were loaded at all
+	if (ourModel.textures_loaded.empty()) {
+		std::cout << "\nWARNING: No textures were loaded from GLB file!" << std::endl;
+		std::cout << "This could be normal for GLB files with embedded textures." << std::endl;
+	}
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+
+	//ERROS HAPPENING HERE LIGHT IS UNDEFINED AND CUBES SAY INCOMPLETE TYPE NOT ALLOED
+	
+	LightSrc lightSrc;
+
+
+
+	std::vector<Object> objs;
+
+
+	objs.emplace_back(Cube());  
+	objs.emplace_back(Cube());
+	objs.emplace_back(Sphere());
+
+	
+	glm::vec3 bkColor(0.9f, 0.9f, 0.9f);
 
 
 	while (!glfwWindowShouldClose(window)) {
@@ -294,6 +248,9 @@ int main() {
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+		lightSrc.pos = lightPos;
+
+
 
 		if (!captureMouse) {
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -304,9 +261,22 @@ int main() {
 		// Process keyboard input
 		processInput(window, camera, deltaTime);
 
-		// Clear the screen
-		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+		// Clear the screen'
+
+		glClearColor(bkColor.r, bkColor.g, bkColor.b, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		 
+		lightSrc.draw(lightShader, camera, lightPos, lightCol, (float) height / width);
+
+		for (Object& obj : objs) {  // Use reference
+			obj.draw(shaderProgram, camera, lightPos, lightCol, (float)height / width);
+		}
+		
+		
+
+
+		//tcube.draw(shaderProgram, camera, lightPos, lightCol);
 
 		// Activate shader and set uniforms
 		modelShader.Activate();
@@ -318,15 +288,32 @@ int main() {
 
 		// Add lighting uniforms
 		modelShader.setVec3("lightPos", lightPos);
-		modelShader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // White light
+		modelShader.setVec3("lightColor", lightCol); // White light
 		modelShader.setVec3("viewPos", camera.pos);
 
 		// render the loaded model
 		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
 		modelShader.setMat4("model", model);
 		ourModel.Draw(modelShader);
+
+
+
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, ourModel2.pos);
+		model = glm::rotate(model, glm::radians(ourModel2.angle.x), glm::vec3(1.0f, 0.0f, 0.0f)); //x
+		model = glm::rotate(model, glm::radians(ourModel2.angle.y), glm::vec3(0.0f, 1.0f, 0.0f)); //y
+		model = glm::rotate(model, glm::radians(ourModel2.angle.z), glm::vec3(0.0f, 0.0f, 1.0f)); //z
+		model = glm::scale(model, glm::vec3(0.007f, 0.007f, 0.007f)); // Scale down by 100x
+		
+		modelShader.setMat4("model", model);
+
+
+
+
+		ourModel2.Draw(modelShader);
+
+
+
 
 		if (GUI) {
 			// Start the Dear ImGui frame
@@ -349,10 +336,41 @@ int main() {
 				captureMouse = true;
 				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			}
-			ImGui::Checkbox("Animate Light", &animateLight);
-			ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f, -100.0f, 100.0f);
-			ImGui::DragFloat3("Object Color", &objectColor.x, 0.01f, 0.0f, 1.0f);
+			ImGuiIO& io = ImGui::GetIO();
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 			ImGui::End();
+			
+
+			ImGui::Begin("Model", &GUI);
+
+			ImGui::DragFloat3("Model Position", &ourModel2.pos.x, 0.01f, -1000.0f, 1000.0f);
+			ImGui::DragFloat3("Rotation", &ourModel2.angle.x, 0.1f, -360.0f, 360.0f);
+			
+
+	
+			ImGui::End();
+
+
+
+			ImGui::Begin("Light Settings", &GUI);
+			ImGui::DragFloat3("Light Position", &lightPos.x, 0.1f, -100.0f, 100.0f);
+			ImGui::ColorPicker3("Light Color", &lightCol.r);
+			ImGui::ColorPicker3("Background Color", &bkColor.r);
+			ImGui::End();
+
+
+			for (int i = 0; i < objs.size(); ++i) {
+				
+				Object& obj = objs[i];
+				std::string frame = "Object " + std::to_string(i + 1) + "##" + std::to_string(i);
+		
+				ImGui::Begin(frame.c_str(), &GUI);
+				ImGui::DragFloat3("Position", &obj.pos.x, 0.1f, -1000.0f, 1000.0f);
+				ImGui::DragFloat("Scale", &obj.size, 0.1f, -0.01f, 1000.0f);
+				ImGui::DragFloat("Rotate", &obj.angle, 0.1f, -360.0f, 360.0f);
+				ImGui::ColorPicker3("Color", &obj.col.r);
+				ImGui::End();
+			}
 
 			// Render ImGui
 			ImGui::Render();
@@ -361,6 +379,7 @@ int main() {
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+		
 	}
 
 	

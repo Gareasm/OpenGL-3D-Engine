@@ -139,21 +139,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.h" />
     <ClCompile Include="EBO.cpp" />
     <ClCompile Include="glad.c" />
+    <ClCompile Include="engine.cpp" />
     <ClCompile Include="Libraries\include\imGui\imgui.cpp" />
     <ClCompile Include="Libraries\include\imGui\imgui_draw.cpp" />
     <ClCompile Include="Libraries\include\imGui\imgui_impl_glfw.cpp" />
     <ClCompile Include="Libraries\include\imGui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Libraries\include\imGui\imgui_tables.cpp" />
     <ClCompile Include="Libraries\include\imGui\imgui_widgets.cpp" />
+    <ClCompile Include="Object.h" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Model.cpp" />
     <ClCompile Include="shaderClass.cpp" />
+    <ClCompile Include="Object.cpp" />
     <ClCompile Include="stb.cpp" />
     <ClCompile Include="VAO.cpp" />
     <ClCompile Include="VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Users\garea\Downloads\grid.frag" />
     <None Include="default.frag" />
     <None Include="default.vert" />
     <None Include="light.frag" />
@@ -163,6 +169,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EBO.h" />
+    <ClInclude Include="Engine.h" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="shaderClass.h" />
