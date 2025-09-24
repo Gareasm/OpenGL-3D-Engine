@@ -18,3 +18,4 @@ Dependencies
 <img width="512" height="512" alt="Screenshot 2025-08-09 174015" src="https://github.com/user-attachments/assets/5d675757-cd5b-4684-930a-3f4287d60f87" />
 <img width="512" height="512" alt="Screenshot 2025-08-07 161227" src="https://github.com/user-attachments/assets/8ff2544f-85f7-4fe0-ad30-535709f56bf3" />
 
+Thanks to https://learnopengl.com/ 
